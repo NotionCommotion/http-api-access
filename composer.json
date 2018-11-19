@@ -1,6 +1,5 @@
 {
     "name": "greenbean/http-api-access",
-    "version": "0.0.1",
     "description": "Calling REST API and associated HTTP parsing.",
     "type": "project",
     "authors": [
@@ -9,7 +8,6 @@
             "email": "villascape@gmail.com"
         }
     ],
-    "minimum-stability": "dev",
     "require": {
         "php": ">=5.4.0"
     },
