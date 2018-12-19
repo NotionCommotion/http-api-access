@@ -76,7 +76,7 @@ class HttpApiAccess
         $accept = strtolower(str_replace(' ', '', $_SERVER['HTTP_ACCEPT']));
         $accept = explode(',', $accept);
         foreach ($accept as $a) {
-             $q = 1;  // the default quality is 1.
+            $q = 1;  // the default quality is 1.
             // check if there is a different quality
             if (strpos($a, ';q=')) {
                 // divide "mime/type;q=X" into two parts: "mime/type" i "X"
@@ -99,39 +99,45 @@ class HttpApiAccess
         return null;
     }
 
-    static public function callApi(string $method, string $url, array $data=[], array $files=[], array $options=[], bool $raw=false) {
+    static public function callApi(string $method, string $url, $contentType, array $data=[], array $files=[], array $options=[]) {
         /*
         string $method: HTTP Method
         string $url: Server URI
         array $data to send
         array $files $_FILES
         array $options additional options such as CURLOPT_HTTPHEADER
-        bool $raw: Whether provided content and should not be encoded but turned into a json string.  Defaults to false.
         */
+        $contentType=$contentType??'application/x-www-form-urlencoded';
         $method=strtolower($method);
         if($files && !in_array($method, ['post', 'put'])) {
             throw new \Exception("Files may only be set with HTTP methods post and put and not $method");
         }
-        if($files) {
-            //cURL doesn't work out of the box with both files and POST data.
-            $postData = [];
-            foreach ($files as $name=>$file){
-                $postData[$name] = new \CURLFile($file['tmp_name'],$file['type'],$file['name']);
-            }
-            if($data) {
-                foreach (explode('&', http_build_query($data)) as $pair){
-                    list($name, $value) = explode('=', $pair, 2);
-                    $postData[urldecode($name)] = urldecode($value);
+        if($contentType==="application/x-www-form-urlencoded"){
+            if($files) {
+                //cURL doesn't work out of the box with both files and POST data.
+                $postData = [];
+                foreach ($files as $name=>$file){
+                    $postData[$name] = new \CURLFile($file['tmp_name'],$file['type'],$file['name']);
                 }
+                if($data) {
+                    foreach (explode('&', http_build_query($data)) as $pair){
+                        list($name, $value) = explode('=', $pair, 2);
+                        $postData[urldecode($name)] = urldecode($value);
+                    }
+                }
+                $data=$postData;
             }
-            $data=$postData;
+            else {
+                $data=http_build_query($data);
+            }
         }
-        elseif($raw) {
+        elseif($contentType==="application/json" || $contentType==="") {
             $data=json_encode($data);
-            $options[CURLOPT_HTTPHEADER][]='Content-Type: text/plain';
+            $options[CURLOPT_HTTPHEADER][]='Content-Type: application/json';
+            $options[CURLOPT_HTTPHEADER][]='Content-Length: ' . strlen($data);
         }
         else {
-            $data=http_build_query($data);
+            throw new \Exception("Only Content-Type application/json and application/x-www-form-urlencoded is permitted. Content-Type $contentType received.");
         }
         $options=$options+[    //Don't use array_merge since it reorders!
             CURLOPT_RETURNTRANSFER => true,     // return web page
